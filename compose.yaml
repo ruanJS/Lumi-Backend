@@ -1,0 +1,13 @@
+services:
+  mysql:
+    container_name: database
+    image: mysql:latest
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-lumiai}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-admin}
+      MYSQL_USER: ${DB_USER:-admin}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-admin123}
+    ports:
+      - "3306:3306"
