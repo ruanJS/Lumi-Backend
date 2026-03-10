@@ -51,7 +51,8 @@ public class SecurityConfig {
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> {})
+                .cors(cors -> {
+                })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
@@ -59,8 +60,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/validate-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/checkout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payment/checkout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/abacatepay").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/webhooks/abacatepay").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/webhook/abacatepay").permitAll()
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

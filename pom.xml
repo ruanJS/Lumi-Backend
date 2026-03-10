@@ -12,7 +12,7 @@
     </parent>
 
     <groupId>com.lumi.ai</groupId>
-    <artifactId>lumi-auth</artifactId>
+    <artifactId>lumi</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>LumiAI</name>
     <description>Backend destinado ao Saas da LumiAI</description>
@@ -27,6 +27,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
         <dependency>
