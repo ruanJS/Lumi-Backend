@@ -3,13 +3,14 @@ version: "3.9"
 services:
   app:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     container_name: lumi-backend-prod
     env_file:
-      - ../config/.env.prod
+      - config/.env.prod
     ports:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      DB_CA_PATH: /app/docker/isrgrootx1.pem
     restart: unless-stopped

@@ -3,15 +3,16 @@ version: "3.9"
 services:
   app:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     container_name: lumi-backend
     env_file:
-      - ../config/.env.dev
+      - config/.env.dev
     ports:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: dev
+      DB_CA_PATH: /app/docker/isrgrootx1.pem
     depends_on:
       - mysql
     restart: unless-stopped
@@ -20,7 +21,7 @@ services:
     image: mysql:8.0
     container_name: lumi-db
     env_file:
-      - ../config/.env.dev
+      - config/.env.dev
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
