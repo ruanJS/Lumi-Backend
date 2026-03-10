@@ -1,4 +1,4 @@
-# Build stage
+# Build stage: compile app AND import certificate
 FROM maven:3.9.4-eclipse-temurin-21 AS build
 
 WORKDIR /app
@@ -7,13 +7,7 @@ RUN mvn dependency:go-offline
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-# Runtime stage
-FROM eclipse-temurin:21-jre-alpine
-
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-
-# Import SSL certificate into Java TrustStore
+# Import certificate into TrustStore during build
 COPY isrgrootx1.pem /tmp/isrgrootx1.pem
 RUN keytool -importcert \
     -trustcacerts \
@@ -23,7 +17,13 @@ RUN keytool -importcert \
     -alias isrgrootx1 \
     -file /tmp/isrgrootx1.pem
 
-# Dynamic settings
+# Runtime stage: just copy the JAR and modified TrustStore
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /opt/java/openjdk/lib/security/cacerts /opt/java/openjdk/lib/security/cacerts
+
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 ENV SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
 
