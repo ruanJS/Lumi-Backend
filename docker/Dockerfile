@@ -5,7 +5,6 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline
 COPY src ./src
-COPY config ./config
 RUN mvn clean package -DskipTests
 
 # Runtime stage
@@ -13,9 +12,18 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-COPY --from=build /app/config ./config
 
-# Configurações dinâmicas
+# Import SSL certificate into Java TrustStore
+COPY docker/isrgrootx1.pem /tmp/isrgrootx1.pem
+RUN keytool -importcert \
+    -trustcacerts \
+    -keystore "$JAVA_HOME/lib/security/cacerts" \
+    -storepass changeit \
+    -noprompt \
+    -alias isrgrootx1 \
+    -file /tmp/isrgrootx1.pem
+
+# Dynamic settings
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 ENV SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
 
