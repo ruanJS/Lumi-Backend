@@ -14,7 +14,7 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
 # Import SSL certificate into Java TrustStore
-COPY docker/isrgrootx1.pem /tmp/isrgrootx1.pem
+COPY isrgrootx1.pem /tmp/isrgrootx1.pem
 RUN keytool -importcert \
     -trustcacerts \
     -keystore "$JAVA_HOME/lib/security/cacerts" \
