@@ -1,9 +1,21 @@
 spring:
+  application:
+    name: Lumi-Backend
+
   datasource:
-    url: jdbc:mysql://localhost:3306/${DB_NAME}
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME}?allowPublicKeyRetrieval=true&useSSL=false
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
 
   mail:
     host: ${EMAIL_HOST}
@@ -23,6 +35,36 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
-output:
-  ansi:
-    enabled: always
+  output:
+    ansi:
+      enabled: always
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+  health:
+    mail:
+      enabled: false
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS}
+
+app:
+  frontend:
+    url: ${FRONTEND_URL}
+  reset-password-url: ${URL_RESET_PASSWORD}
+
+URL_CORS: ${URL_CORS}
+
+abacatepay:
+  api:
+    key: ${ABACATE_PAY_API_KEY}
+  webhook:
+    secret: ${ABACATE_PAY_WEBHOOK_SECRET}

@@ -55,10 +55,26 @@ public class AuthServiceImpl extends AuthService {
             throw new IllegalArgumentException("Email já registrado");
         if (req.getPassword() == null || req.getPassword().isBlank())
             throw new IllegalArgumentException("Senha é obrigatória");
-        if (req.getRole() == null || req.getRole().isBlank())
-            throw new IllegalArgumentException("Tipo de usuário é obrigatório");
-
-        UserRole role = UserRole.fromString(req.getRole());
+        UserRole role = UserRole.USER;
+        try {
+            if (req.getRole() != null) {
+                UserRole requestedRole = UserRole.valueOf(req.getRole().toUpperCase());
+                
+                if (requestedRole == UserRole.ADMIN) {
+                    long adminCount = userRepository.countByRole(UserRole.ADMIN);
+                    // Allow if no admin exists (bootstrap) or if the requester is an ADMIN
+                    if (adminCount == 0 || (requestingUser != null && requestingUser.getRole() == UserRole.ADMIN)) {
+                        role = UserRole.ADMIN;
+                    } else {
+                        role = UserRole.USER;
+                    }
+                } else {
+                    role = requestedRole;
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            role = UserRole.USER;
+        }
 
         User user = new User();
         user.setName(req.getName().trim());
@@ -71,9 +87,8 @@ public class AuthServiceImpl extends AuthService {
         userRepository.save(user);
         emailService.sendWelcomeEmail(user.getEmail(), user.getName(), req.getPassword());
 
-        return new AuthResponse(generateJwtToken(user), new UserDto(user));
+        return buildAuthResponse(user);
     }
-
 
     @Override
     public AuthResponse login(AuthRequest req) {
@@ -81,7 +96,21 @@ public class AuthServiceImpl extends AuthService {
                 .orElseThrow(() -> new BadCredentialsException("Credenciais inválidas"));
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword()))
             throw new BadCredentialsException("Credenciais inválidas");
-        return new AuthResponse(generateJwtToken(user), new UserDto(user));
+
+        return buildAuthResponse(user);
+    }
+
+    @Override
+    public AuthResponse refreshToken(String refreshToken) {
+        if (!jwtService.validateToken(refreshToken))
+            throw new BadCredentialsException("Refresh token inválido ou expirado");
+
+        String userId = jwtService.getUserId(refreshToken);
+
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+
+        return buildAuthResponse(user);
     }
 
     @Override
@@ -158,6 +187,7 @@ public class AuthServiceImpl extends AuthService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
+        if (dto.getPhone() != null) user.setPhone(dto.getPhone());
         userRepository.save(user);
         return new UserDto(user);
     }
@@ -176,8 +206,17 @@ public class AuthServiceImpl extends AuthService {
                 .collect(Collectors.toList());
     }
 
-    private String generateJwtToken(User user) {
-        return jwtService.generateToken(user.getId().toString(), user.getEmail());
+    @Override
+    public AuthResponse generateAdminToken(User user) {
+        return buildAuthResponse(user);
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
+        String userId       = user.getId().toString();
+        String email        = user.getEmail();
+        String accessToken  = jwtService.generateToken(userId, email);
+        String refreshToken = jwtService.generateRefreshToken(userId, email);
+        return new AuthResponse(accessToken, refreshToken, new UserDto(user));
     }
 
     private String generateNumericCode(int length) {

@@ -14,25 +14,25 @@ import java.util.Date;
 public class JwtService {
 
     private final Key signingKey;
-    private final long expirationMs;
+    private final long accessTokenExpirationMs;
+    private final long refreshTokenExpirationMs;
 
-    public JwtService(@Value("${jwt.secret}") String secret,
-                      @Value("${jwt.expiration-ms}") long expirationMs) {
+    public JwtService(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.expiration-ms}") long accessTokenExpirationMs,
+            @Value("${jwt.refresh-expiration-ms:604800000}") long refreshTokenExpirationMs) {
+
         this.signingKey = Keys.hmacShaKeyFor(java.util.Base64.getDecoder().decode(secret));
-        this.expirationMs = expirationMs;
+        this.accessTokenExpirationMs  = accessTokenExpirationMs;
+        this.refreshTokenExpirationMs = refreshTokenExpirationMs;
     }
 
     public String generateToken(String userId, String email) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expirationMs);
+        return buildToken(userId, email, accessTokenExpirationMs, "access");
+    }
 
-        return Jwts.builder()
-                .setSubject(userId)
-                .claim("email", email)
-                .setIssuedAt(now)
-                .setExpiration(expiry)
-                .signWith(signingKey)
-                .compact();
+    public String generateRefreshToken(String userId, String email) {
+        return buildToken(userId, email, refreshTokenExpirationMs, "refresh");
     }
 
     public boolean validateToken(String token) {
@@ -50,6 +50,20 @@ public class JwtService {
 
     public String getEmail(String token) {
         return parseClaims(token).get("email", String.class);
+    }
+
+    private String buildToken(String userId, String email, long expirationMs, String type) {
+        Date now    = new Date();
+        Date expiry = new Date(now.getTime() + expirationMs);
+
+        return Jwts.builder()
+                .setSubject(userId)
+                .claim("email", email)
+                .claim("type", type)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(signingKey)
+                .compact();
     }
 
     private Claims parseClaims(String token) {

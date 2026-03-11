@@ -23,21 +23,22 @@ public class AuthController {
     private final UserRepository userRepository;
 
     public AuthController(AuthService authService, UserRepository userRepository) {
-        this.authService = authService;
+        this.authService    = authService;
         this.userRepository = userRepository;
     }
 
-    private User resolveUser(Object principal) {
-        if (principal instanceof User user) return user;
-        if (principal instanceof UserDto userDto)
-            return userRepository.findById(userDto.getId()).orElse(null);
-        return null;
-    }
-
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req) {
+    public ResponseEntity<AuthResponse> register(
+            @Valid @RequestBody RegisterRequest req,
+            @AuthenticationPrincipal Object principal) {
         try {
-            return ResponseEntity.ok(authService.register(req, null));
+            User currentAdmin = null;
+            if (principal instanceof User user) currentAdmin = user;
+            else if (principal instanceof UserDto userDto) {
+                currentAdmin = userRepository.findById(userDto.getId()).orElse(null);
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(req, currentAdmin));
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
         } catch (Exception e) {
@@ -58,6 +59,18 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest req) {
+        try {
+            return ResponseEntity.ok(authService.refreshToken(req.getRefreshToken()));
+        } catch (BadCredentialsException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Erro ao renovar token: " + e.getMessage(), e);
+        }
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<Void> forgotPassword(@RequestParam String email) {
         try {
@@ -73,7 +86,6 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> validateResetCode(
             @RequestParam String code,
             @RequestParam String email) {
-
         try {
             authService.validateResetCode(code, email);
             return ResponseEntity.ok(Collections.emptyMap());
@@ -86,7 +98,6 @@ public class AuthController {
     public ResponseEntity<Void> resetPassword(
             @RequestParam String token,
             @RequestParam String newPassword) {
-
         try {
             authService.resetPassword(token, newPassword);
             return ResponseEntity.ok().build();
@@ -95,16 +106,35 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<UserDto> getMe(@AuthenticationPrincipal Object principal) {
+        User user = resolveUser(principal);
+        if (user == null)
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
+
+        return ResponseEntity.ok(authService.getMe(user.getId()));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserDto> putMe(
+            @AuthenticationPrincipal Object principal,
+            @RequestBody UserDto dto) {
+        User user = resolveUser(principal);
+        if (user == null)
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
+
+        return ResponseEntity.ok(authService.updateUser(user.getId(), dto));
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<Void> changePassword(
             @AuthenticationPrincipal Object principal,
             @Valid @RequestBody ChangePasswordRequest request) {
 
         User user = resolveUser(principal);
-        if (user == null) {
+        if (user == null)
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                     "Usuário não autenticado ou sessão inválida");
-        }
 
         try {
             authService.changePassword(user.getId(), request);
@@ -117,5 +147,12 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Erro ao alterar senha: " + e.getMessage(), e);
         }
+    }
+
+    private User resolveUser(Object principal) {
+        if (principal instanceof User user) return user;
+        if (principal instanceof UserDto userDto)
+            return userRepository.findById(userDto.getId()).orElse(null);
+        return null;
     }
 }

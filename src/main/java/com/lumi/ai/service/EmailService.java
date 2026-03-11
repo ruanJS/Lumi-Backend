@@ -140,4 +140,25 @@ public class EmailService {
 
         sendHtmlEmail(to, subject, htmlBody);
     }
+
+    @Async("emailExecutor")
+    public void sendOtpEmail(String to, String otp) {
+        String subject = "Seu código de verificação administrativo - LumiAI";
+
+        String htmlBody = String.format("""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+                    <h2 style="color: #7c3aed;">LumiAI Admin</h2>
+                    <p>Olá,</p>
+                    <p>Foi solicitado um acesso administrativo à sua conta. Use o código de verificação abaixo para completar o login seguro (2FA).</p>
+                    <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 25px 0;">
+                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">%s</span>
+                    </div>
+                    <p style="color: #ef4444; font-size: 14px;"><strong>Atenção:</strong> Este código expira em 5 minutos e só pode ser utilizado uma vez.</p>
+                    <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;" />
+                    <p style="font-size: 12px; color: #6b7280;">Se você não solicitou este acesso, ignore este email ou contate o suporte imediatamente.</p>
+                </div>
+                """, otp);
+
+        sendHtmlEmail(to, subject, htmlBody);
+    }
 }

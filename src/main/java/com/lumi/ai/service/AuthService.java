@@ -29,4 +29,8 @@ public abstract class AuthService {
     public abstract void deleteUser(UUID id);
 
     public abstract List<UserDto> getAllUsers(String role);
+
+    public abstract AuthResponse refreshToken(String refreshToken);
+
+    public abstract AuthResponse generateAdminToken(User user);
 }

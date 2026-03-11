@@ -31,7 +31,7 @@ public class SecurityConfig {
     private String urlCors;
 
     public SecurityConfig(JwtService jwtService, UserRepository userRepository) {
-        this.jwtService = jwtService;
+        this.jwtService    = jwtService;
         this.userRepository = userRepository;
     }
 
@@ -46,26 +46,58 @@ public class SecurityConfig {
     }
 
     @Bean
+    public RateLimitFilter rateLimitFilter() {
+        return new RateLimitFilter();
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, userRepository);
 
         http
+                // Stateless REST API — no CSRF or sessions needed
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> {
-                })
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // Security headers
+                .headers(headers -> headers
+                        .contentTypeOptions(contentType -> {})
+                        .frameOptions(frame -> frame.deny())
+                        .xssProtection(xss -> {})
+                )
+
                 .authorizeHttpRequests(auth -> auth
+                        // Public Auth Endpoints
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/validate-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
+                        
+                        // Public Admin Auth (Pre-2FA)
+                        .requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/admin/auth/verify").permitAll()
+                        .requestMatchers("/api/admin/auth/**").permitAll()
+                        
+                        // Payments & Webhooks
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/checkout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payment/checkout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/abacatepay").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/webhooks/abacatepay").permitAll()
                         .requestMatchers(HttpMethod.POST, "/webhook/abacatepay").permitAll()
-                        .anyRequest().authenticated())
+                        
+                        // Leads
+                        .requestMatchers(HttpMethod.POST, "/api/leads/capture").permitAll()
+                        
+                        // Protected Admin Area
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        
+                        .anyRequest().authenticated()
+                )
+
+                .addFilterBefore(rateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
