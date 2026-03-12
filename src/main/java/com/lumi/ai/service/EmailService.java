@@ -1,7 +1,8 @@
 package com.lumi.ai.service;
 
 import com.resend.Resend;
-import com.resend.services.emails.model.SendEmailRequest;
+import com.resend.services.emails.model.CreateEmailOptions;
+import com.resend.services.emails.model.CreateEmailResponse;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +43,7 @@ public class EmailService {
 
     private void sendViaResend(String to, String subject, String htmlBody) {
         try {
-            SendEmailRequest sendEmailRequest = SendEmailRequest.builder()
+            CreateEmailOptions sendEmailRequest = CreateEmailOptions.builder()
                     .from(fromEmail)
                     .to(to)
                     .subject(subject)
