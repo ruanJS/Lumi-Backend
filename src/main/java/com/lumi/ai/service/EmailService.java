@@ -1,47 +1,38 @@
 package com.lumi.ai.service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import com.resend.Resend;
+import com.resend.services.emails.model.SendEmailRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private final Resend resend;
 
-    @Value("${spring.mail.username}")
+    @Value("${app.email.from}")
     private String fromEmail;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+    public EmailService(@Value("${app.resend.api-key}") String apiKey) {
+        this.resend = new Resend(apiKey);
     }
 
     private void sendHtmlEmail(String to, String subject, String htmlBody) {
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            SendEmailRequest sendEmailRequest = SendEmailRequest.builder()
+                    .from(fromEmail)
+                    .to(to)
+                    .subject(subject)
+                    .html(htmlBody)
+                    .build();
 
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlBody, true);
-
-            ClassPathResource logo = new ClassPathResource("img/lumi-logo.png");
-            if (logo.exists()) {
-                helper.addInline("lumiLogo", logo);
-            }
-
-            mailSender.send(message);
-        } catch (MessagingException e) {
-            throw new RuntimeException("Erro ao enviar e-mail para " + to, e);
+            resend.emails().send(sendEmailRequest);
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao enviar e-mail via Resend para " + to + ": " + e.getMessage(), e);
         }
     }
 
@@ -59,7 +50,7 @@ public class EmailService {
                             <table width="600" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.08);">
                                 <tr>
                                     <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:32px;text-align:center;">
-                                        <img src="cid:lumiLogo" alt="LumiAI" style="width:120px;height:auto;" />
+                                        <img src="%s/logo.png" alt="LumiAI" style="width:120px;height:auto;" />
                                         <h1 style="color:#ffffff;margin:20px 0 0;font-size:24px;">LumiAI</h1>
                                         <p style="color:#e0e7ff;margin:8px 0 0;font-size:14px;">Gestão financeira inteligente</p>
                                     </td>
@@ -87,7 +78,7 @@ public class EmailService {
                     </table>
                 </body>
                 </html>
-                """, resetCode);
+                """, frontendUrl, resetCode);
 
         sendHtmlEmail(to, subject, htmlBody);
     }
@@ -106,7 +97,7 @@ public class EmailService {
                             <table width="600" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.08);">
                                 <tr>
                                     <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:32px;text-align:center;">
-                                        <img src="cid:lumiLogo" alt="LumiAI" style="width:120px;height:auto;" />
+                                        <img src="%s/lumi-logo.png" alt="LumiAI" style="width:120px;height:auto;" />
                                         <h1 style="color:#ffffff;margin:20px 0 0;font-size:24px;">LumiAI</h1>
                                     </td>
                                 </tr>
@@ -136,7 +127,7 @@ public class EmailService {
                     </table>
                 </body>
                 </html>
-                """, name, to, temporaryPassword, frontendUrl);
+                """, frontendUrl, name, to, temporaryPassword, frontendUrl);
 
         sendHtmlEmail(to, subject, htmlBody);
     }
@@ -147,7 +138,10 @@ public class EmailService {
 
         String htmlBody = String.format("""
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-                    <h2 style="color: #7c3aed;">LumiAI Admin</h2>
+                    <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:24px;text-align:center;border-radius:8px 8px 0 0;margin:-20px -20px 20px -20px;">
+                        <img src="%s/lumi-logo.png" alt="LumiAI" style="width:100px;height:auto;" />
+                        <h2 style="color: #ffffff; margin: 10px 0 0;">LumiAI Admin</h2>
+                    </div>
                     <p>Olá,</p>
                     <p>Foi solicitado um acesso administrativo à sua conta. Use o código de verificação abaixo para completar o login seguro (2FA).</p>
                     <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 25px 0;">
@@ -157,7 +151,7 @@ public class EmailService {
                     <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;" />
                     <p style="font-size: 12px; color: #6b7280;">Se você não solicitou este acesso, ignore este email ou contate o suporte imediatamente.</p>
                 </div>
-                """, otp);
+                """, frontendUrl, otp);
 
         sendHtmlEmail(to, subject, htmlBody);
     }

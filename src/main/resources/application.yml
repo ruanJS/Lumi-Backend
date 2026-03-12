@@ -61,6 +61,10 @@ app:
   frontend:
     url: ${FRONTEND_URL}
   reset-password-url: ${URL_RESET_PASSWORD}
+  resend:
+    api-key: ${RESEND_API_KEY}
+  email:
+    from: ${EMAIL_USER}
 
 URL_CORS: ${URL_CORS}
 
