@@ -11,7 +11,7 @@ public class EmailService {
 
     private final Resend resend;
 
-    @Value("${app.email.from}")
+    @Value("${app.email.from:onboarding@resend.dev}")
     private String fromEmail;
 
     @Value("${app.frontend.url}")
