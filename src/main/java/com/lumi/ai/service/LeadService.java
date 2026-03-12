@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 public class LeadService {
     
     private final LeadRepository leadRepository;
+    private final EmailService emailService;
 
     @Transactional
     public LeadResponseDTO captureLead(LeadRequestDTO request, String ipAddress, String userAgent) {
@@ -37,6 +38,10 @@ public class LeadService {
                 .build();
 
         lead = leadRepository.save(lead);
+        
+        // Dispara e-mail de lista de espera
+        emailService.sendWaitlistEmail(lead.getEmail(), lead.getName());
+
         return LeadResponseDTO.fromEntity(lead);
     }
 

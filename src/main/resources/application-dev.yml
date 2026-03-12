@@ -49,8 +49,6 @@ management:
     health:
       show-details: when_authorized
   health:
-    mail:
-      enabled: false
 
 jwt:
   secret: ${JWT_SECRET}

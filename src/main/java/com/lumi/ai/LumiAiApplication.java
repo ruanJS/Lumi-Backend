@@ -6,7 +6,12 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport;
 
 import static org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO;
 
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 @SpringBootApplication
+@EnableAsync
+@EnableScheduling
 @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)
 public class LumiAiApplication {
 	public static void main(String[] args) {
