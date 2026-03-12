@@ -2,13 +2,19 @@ package com.lumi.ai.service;
 
 import com.resend.Resend;
 import com.resend.services.emails.model.SendEmailRequest;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
 
+    private final JavaMailSender mailSender;
     private final Resend resend;
 
     @Value("${app.email.from:onboarding@resend.dev}")
@@ -17,11 +23,24 @@ public class EmailService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    public EmailService(@Value("${app.resend.api-key}") String apiKey) {
-        this.resend = new Resend(apiKey);
+    public EmailService(
+            @Autowired(required = false) JavaMailSender mailSender,
+            @Value("${app.resend.api-key:}") String apiKey) {
+        this.mailSender = mailSender;
+        this.resend = (apiKey != null && !apiKey.isBlank()) ? new Resend(apiKey) : null;
     }
 
     private void sendHtmlEmail(String to, String subject, String htmlBody) {
+        if (resend != null) {
+            sendViaResend(to, subject, htmlBody);
+        } else if (mailSender != null) {
+            sendViaSmtp(to, subject, htmlBody);
+        } else {
+            throw new RuntimeException("Nenhum serviço de e-mail configurado (SMTP ou Resend).");
+        }
+    }
+
+    private void sendViaResend(String to, String subject, String htmlBody) {
         try {
             SendEmailRequest sendEmailRequest = SendEmailRequest.builder()
                     .from(fromEmail)
@@ -33,6 +52,22 @@ public class EmailService {
             resend.emails().send(sendEmailRequest);
         } catch (Exception e) {
             throw new RuntimeException("Erro ao enviar e-mail via Resend para " + to + ": " + e.getMessage(), e);
+        }
+    }
+
+    private void sendViaSmtp(String to, String subject, String htmlBody) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Erro ao enviar e-mail via SMTP para " + to, e);
         }
     }
 
@@ -50,7 +85,7 @@ public class EmailService {
                             <table width="600" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.08);">
                                 <tr>
                                     <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:32px;text-align:center;">
-                                        <img src="%s/logo.png" alt="LumiAI" style="width:120px;height:auto;" />
+                                        <img src="%s/lumi-logo.png" alt="LumiAI" style="width:120px;height:auto;" />
                                         <h1 style="color:#ffffff;margin:20px 0 0;font-size:24px;">LumiAI</h1>
                                         <p style="color:#e0e7ff;margin:8px 0 0;font-size:14px;">Gestão financeira inteligente</p>
                                     </td>
